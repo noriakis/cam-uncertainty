@@ -3,6 +3,7 @@ import cv2
 import keras
 import numpy as np
 from PIL import Image
+from tqdm import tqdm
 
 def export_dropout_vgg16(dropout):
     raw = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
@@ -55,7 +56,7 @@ def GradCam_Dropout(input_model, image, category_index, layer_name, raw_array, d
             outputs=[input_model.get_layer(layer_name).output, input_model.output]
         )
     cams = []
-    for i in range(0, sample):
+    for i in tqdm(range(0, sample)):
         with tf.GradientTape() as tape:
             inputs = tf.cast(image, tf.float32)
             (convOuts, preds) = gradModel(inputs) 
