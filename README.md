@@ -5,3 +5,4 @@ Using Monte-Carlo dropout to improve the localization performance of Grad-CAM an
 
 #### 1DCNN
 Improved explainability of classification of ECG using Score-CAM.
+![Example CAM image (ECG)](images/example_ecg.png)
