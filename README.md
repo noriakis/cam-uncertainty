@@ -1,2 +1,2 @@
 ### Introducing uncertainty to class activation mapping in convolutional neural networks
-[example CAM image](images/example.png)
+![Example CAM image (general image)](images/example.png)
