@@ -22,8 +22,32 @@ def load_bayesian_CNN_1d():
     gap = tf.keras.layers.GlobalAveragePooling1D()(x)
     output_layer = tf.keras.layers.Dense(4, activation="softmax")(gap)
     model = tf.keras.models.Model(inputs=input_layer, outputs=output_layer)
-    model.load_weights("weights/best_weights_1dcnn.h5")
+    model.load_weights("weights/best_weights_ECG.h5")
     return model
+
+def export_dropout_effnet():
+    b0 = tf.keras.applications.EfficientNetB0(
+    include_top=True, weights='imagenet', input_tensor=None,
+    input_shape=None, pooling=None, classes=1000,
+    classifier_activation='softmax')
+
+    afterdropout=False
+    x = b0.layers[0].output
+    for e, l in enumerate(b0.layers[1:]):
+        print("current layer:", e+1, l.name)
+        if type(l.input)==list and afterdropout:
+            x = b0.get_layer(l.name)([x, l.input[1]])
+            afterdropout=False
+        elif type(l.input)==list and not afterdropout:
+            x = b0.get_layer(l.name)([l.input[0], l.input[1]])
+        elif "drop" in l.name:
+            print("Found dropout, replacing ...", l.rate, l.name)
+            x = tf.keras.layers.Dropout(l.rate)(x, training=True)
+            afterdropout=True
+        else:
+            x = b0.get_layer(l.name)(x)
+    newmodel = tf.keras.Model(inputs=b0.input, outputs=x)
+    newmodel.save("models/dropout_effnetb0.h5")
 
 def export_dropout_vgg16(dropout):
     raw = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
@@ -129,6 +153,7 @@ def GradCam_Dropout(input_model, image, category_index, layer_name, raw_array, d
         norm_grads = tf.divide(grads, tf.reduce_mean(tf.square(grads)))
         weights = tf.reduce_mean(norm_grads, axis=(0, 1))
         cam = tf.reduce_sum(tf.multiply(weights, convOuts), axis=-1)
+        cam = cv2.resize(cam.numpy(), (dimension, dimension), cv2.INTER_LINEAR)
         cam = np.maximum(cam, 0)
         cam = cam / np.max(cam)
         cams.append(cam)
@@ -144,12 +169,17 @@ def GradCam_Dropout(input_model, image, category_index, layer_name, raw_array, d
     w_cam = w_cam / np.max(w_cam)
 
     heatmap = w_cam.copy()
+    stdcam = std / np.max(std)
 
     image = np.asarray(Image.fromarray(raw_array.astype("uint8")).resize((dimension, dimension)))
     w_cam = cv2.applyColorMap(np.uint8(255-255*w_cam), cv2.COLORMAP_JET)
     w_cam = cv2.addWeighted(w_cam, 0.5, image, 0.5, 0)
 
-    return np.uint8(w_cam), heatmap
+    image = np.asarray(Image.fromarray(raw_array.astype("uint8")).resize((dimension, dimension)))
+    std_cam = cv2.applyColorMap(np.uint8(255-255*stdcam), cv2.COLORMAP_JET)
+    std_cam = cv2.addWeighted(std_cam, 0.5, image, 0.5, 0)
+
+    return np.uint8(w_cam), heatmap, np.uint8(std_cam)
 
 
 def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, dimension, sample):
@@ -169,7 +199,7 @@ def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, 
         for act_map_normalized in act_map_normalized_list:
             masked_input = np.copy(image)
             for k in range(3):
-                masked_input[0,:,:,k] *= act_map_normalized
+                masked_input[0,:,:,k] = np.multiply(masked_input[0,:,:,k], act_map_normalized, casting="unsafe")
             masked_input_list.append(masked_input)
         masked_input_array = np.concatenate(masked_input_list, axis=0)
         
@@ -190,7 +220,7 @@ def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, 
 
     m = np.mean(cams, axis=0)
     std = np.std(cams, axis=0)
-    cov = std / m
+    cov = np.nan_to_num(std / m)
 
     newcam = m  * (1-cov)
     newcam = cv2.resize(newcam, (dimension, dimension))
@@ -202,4 +232,9 @@ def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, 
     newcam = cv2.applyColorMap(np.uint8(255-255*newcam), cv2.COLORMAP_JET)
     newcam = cv2.addWeighted(newcam, 0.5, raw_image, 0.5, 0)
 
-    return np.uint8(newcam), score_heatmap
+    stdcam = std / np.max(std)
+    raw_image = np.asarray(Image.fromarray(raw_array.astype("uint8")).resize((dimension, dimension)))
+    std_cam = cv2.applyColorMap(np.uint8(255-255*stdcam), cv2.COLORMAP_JET)
+    std_cam = cv2.addWeighted(std_cam, 0.5, raw_image, 0.5, 0)
+
+    return np.uint8(newcam), score_heatmap, np.uint8(std_cam)
