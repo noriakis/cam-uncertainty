@@ -4,6 +4,27 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
+def load_bayesian_CNN_1d():
+    dropout=0.1
+    input_layer = tf.keras.layers.Input((1000,12))
+    x = tf.keras.layers.Conv1D(filters=30, kernel_size=10, padding="causal", activation="relu")(input_layer)
+    x = tf.keras.layers.Dropout(dropout)(x, training=True)
+    x = tf.keras.layers.Conv1D(filters=30, kernel_size=10, padding="causal", activation="relu")(x)
+    x = tf.keras.layers.Dropout(dropout)(x, training=True)
+    x = tf.keras.layers.Conv1D(filters=20, kernel_size=5, padding="causal", activation="relu")(x)
+    x = tf.keras.layers.Dropout(dropout)(x, training=True)
+    x = tf.keras.layers.Conv1D(filters=20, kernel_size=5, padding="causal", activation="relu")(x)
+    x = tf.keras.layers.Dropout(dropout)(x, training=True)
+    x = tf.keras.layers.Conv1D(filters=10, kernel_size=5, padding="causal", activation="relu")(x)
+    x = tf.keras.layers.Dropout(dropout)(x, training=True)
+    x = tf.keras.layers.Conv1D(filters=10, kernel_size=5, padding="causal", activation="relu")(x)
+    x = tf.keras.layers.Dropout(dropout)(x, training=True)
+    gap = tf.keras.layers.GlobalAveragePooling1D()(x)
+    output_layer = tf.keras.layers.Dense(4, activation="softmax")(gap)
+    model = tf.keras.models.Model(inputs=input_layer, outputs=output_layer)
+    model.load_weights("weights/best_weights_1dcnn.h5")
+    return model
+
 def export_dropout_vgg16(dropout):
     raw = tf.keras.applications.vgg16.VGG16(include_top=True, weights='imagenet')
     x = raw.layers[0].output
