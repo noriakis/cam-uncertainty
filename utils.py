@@ -25,6 +25,28 @@ def load_bayesian_CNN_1d():
     model.load_weights("weights/best_weights_ECG.h5")
     return model
 
+def load_chexnet_with_dropout():
+    img_input = tf.keras.Input(shape=(224,224,3))
+    dropout=0.5
+    base_model = tf.keras.applications.densenet.DenseNet121(
+        include_top=False,
+        input_tensor=img_input,
+        input_shape=(224,224,3),
+        weights="imagenet",
+        pooling="avg"
+        )
+    lastconv = tf.keras.Model(inputs=base_model.input, outputs=base_model.get_layer("conv5_block16_1_relu").output)
+    dout1  = tf.keras.layers.Dropout(dropout)(lastconv.output, training=True)
+    x = base_model.get_layer("conv5_block16_2_conv")(dout1)
+    x = base_model.get_layer("conv5_block16_concat")([base_model.get_layer("conv5_block15_concat").output, x])
+    x = base_model.get_layer("bn")(x)
+    x = base_model.get_layer("relu")(x)
+    x = base_model.get_layer("avg_pool")(x)
+    x = tf.keras.layers.Dropout(dropout)(x, training=True)
+    predictions = tf.keras.layers.Dense(1, activation="sigmoid", name="predictions")(x)
+    model = tf.keras.Model(inputs=img_input, outputs=predictions)
+    return model
+
 def export_dropout_effnet():
     b0 = tf.keras.applications.EfficientNetB0(
     include_top=True, weights='imagenet', input_tensor=None,
@@ -59,7 +81,7 @@ def export_dropout_vgg16(dropout):
         else:
             x = raw.get_layer(l.name)(x)
     new_model = tf.keras.Model(inputs= raw.input, outputs=x)
-    new_model.save("dropout_model.h5")
+    new_model.save("models/dropout_model.h5")
     return 0
 
 def GradCam(input_model, image, category_index, layer_name, raw_array, dimension):
@@ -112,7 +134,7 @@ def ScoreCam(input_model, image, category_index, layer_name, raw_array, dimensio
     for act_map_normalized in act_map_normalized_list:
         masked_input = np.copy(image)
         for k in range(3):
-            masked_input[0,:,:,k] *= act_map_normalized
+            masked_input[0,:,:,k] = np.multiply(masked_input[0,:,:,k], act_map_normalized, casting="unsafe")
         masked_input_list.append(masked_input)
     masked_input_array = np.concatenate(masked_input_list, axis=0)
 
