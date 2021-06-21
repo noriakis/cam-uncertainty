@@ -1,4 +1,6 @@
 ### Introducing uncertainty to class activation mapping in convolutional neural networks
+Jupyter notebooks are for reproducing the visualization involving the general image classification.  
+
 - models: directory storing models (for 2DCNN).
 - weights: directory storing model weights (for 1DCNN).
 - images: directory storing the numpy array of tested images (resized to 224 x 224) and the resulting figure.
