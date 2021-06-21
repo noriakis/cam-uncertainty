@@ -1,4 +1,13 @@
 ### Introducing uncertainty to class activation mapping in convolutional neural networks
+- models: directory storing models (for 2DCNN).
+- weights: directory storing model weights (for 1DCNN).
+- images: directory storing the numpy array of tested images (resized to 224 x 224) and the resulting figure.
+
+#### The dataset used:
+- [PTB-XL](https://physionet.org/content/ptb-xl/)
+- Chest-Xray14 (with the annotation provided by RSNA)
+- ImageNet
+
 #### 2DCNN
 Using Monte-Carlo dropout to improve the localization performance of Grad-CAM and Score-CAM.
 
