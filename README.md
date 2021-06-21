@@ -9,8 +9,8 @@ Jupyter notebooks are for reproducing the visualization involving the general im
 
 #### The dataset used:
 - [PTB-XL](https://physionet.org/content/ptb-xl/)
-- Chest-Xray14 (with the annotation provided by RSNA)
-- ImageNet
+- [Chest-Xray14](https://nihcc.app.box.com/v/ChestXray-NIHCC) (with the annotation provided by RSNA)
+- [ImageNet](https://image-net.org/)
 
 #### 2DCNN
 Using Monte-Carlo dropout to improve the localization performance of Grad-CAM and Score-CAM.
