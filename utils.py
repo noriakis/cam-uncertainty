@@ -184,6 +184,7 @@ def GradCam_Dropout(input_model, image, category_index, layer_name, raw_array, d
     m = np.nanmean(cams, axis=0)
     std = np.nanstd(cams, axis=0)
     cov = np.nan_to_num(std / m)
+    cov = cov / np.max(cov)
 
     w_cam = m * (1-cov)
     w_cam = cv2.resize(w_cam, (dimension, dimension),cv2.INTER_LINEAR)
@@ -243,7 +244,8 @@ def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, 
     m = np.mean(cams, axis=0)
     std = np.std(cams, axis=0)
     cov = np.nan_to_num(std / m)
-
+    cov = cov / np.max(cov)
+    
     newcam = m  * (1-cov)
     newcam = cv2.resize(newcam, (dimension, dimension))
     score_heatmap = newcam.copy()
