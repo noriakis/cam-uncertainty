@@ -4,6 +4,12 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
+def resize_normalize_cam(cam, dimension):    
+    cam = cv2.resize(cam, (dimension, dimension))
+    cam = np.maximum(cam, 0)
+    cam = cam / np.max(cam)
+    return cam
+
 def load_bayesian_CNN_1d():
     dropout=0.1
     input_layer = tf.keras.layers.Input((1000,12))
@@ -103,9 +109,7 @@ def GradCam(input_model, image, category_index, layer_name, raw_array, dimension
 
     cam = tf.reduce_sum(tf.multiply(weights, convOuts), axis=-1)
     cam = cam.numpy()
-    cam = cv2.resize(cam, (dimension, dimension))
-    cam = np.maximum(cam, 0)
-    cam = cam / np.max(cam)
+    cam = resize_normalize_cam(cam, dimension)
 
     heatmap = cam.copy()
 
@@ -147,10 +151,8 @@ def ScoreCam(input_model, image, category_index, layer_name, raw_array, dimensio
     pred_from_masked_input_array = np.vstack(split_weights)
     weights = pred_from_masked_input_array[:, category_index]
     cam = np.dot(act_map_array[0,:,:,:], weights)
-    cam = cv2.resize(cam, (dimension, dimension))
+    cam = resize_normalize_cam(cam, dimension)
     score_heatmap = cam.copy()
-    cam = np.maximum(0, cam)  # Passing through ReLU
-    cam /= np.max(cam)  # scale 0 to 1.0
 
     raw_image = np.asarray(Image.fromarray(raw_array.astype("uint8")).resize((dimension, dimension)))
     cam = cv2.applyColorMap(np.uint8(255-255*cam), cv2.COLORMAP_JET)
@@ -175,21 +177,18 @@ def GradCam_Dropout(input_model, image, category_index, layer_name, raw_array, d
         norm_grads = tf.divide(grads, tf.reduce_mean(tf.square(grads)))
         weights = tf.reduce_mean(norm_grads, axis=(0, 1))
         cam = tf.reduce_sum(tf.multiply(weights, convOuts), axis=-1)
-        cam = cv2.resize(cam.numpy(), (dimension, dimension), cv2.INTER_LINEAR)
-        cam = np.maximum(cam, 0)
-        cam = cam / np.max(cam)
+        cam = cam.numpy()
+        cam = resize_normalize_cam(cam, dimension)
         cams.append(cam)
 
     cams = np.asarray(cams)
-    m = np.nanmean(cams, axis=0)
-    std = np.nanstd(cams, axis=0)
-    cov = np.nan_to_num(std / m)
+    m = np.mean(cams, axis=0)
+    std = np.std(cams, axis=0)
+    cov = std / (m+1e-10)
     cov = cov / np.max(cov)
 
     w_cam = m * (1-cov)
-    w_cam = cv2.resize(w_cam, (dimension, dimension),cv2.INTER_LINEAR)
-    w_cam = np.maximum(w_cam, 0)
-    w_cam = w_cam / np.max(w_cam)
+    w_cam = resize_normalize_cam(w_cam, dimension)
 
     heatmap = w_cam.copy()
     stdcam = std / np.max(std)
@@ -206,6 +205,9 @@ def GradCam_Dropout(input_model, image, category_index, layer_name, raw_array, d
 
 
 def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, dimension, sample):
+    # Implementation reference
+    # https://github.com/tabayashi0117/Score-CAM
+    # https://github.com/haofanwang/Score-CAM
     input_shape = (dimension, dimension)
     cams = []
     for i in tqdm(range(0, sample)):
@@ -236,21 +238,17 @@ def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, 
         pred_from_masked_input_array = np.vstack(split_weights)
         weights = pred_from_masked_input_array[:, category_index]
         cam = np.dot(act_map_array[0,:,:,:], weights)
-        cam = cv2.resize(cam, (dimension, dimension))
-        cam = np.maximum(0, cam) 
-        cam /= np.max(cam)
+        cam = resize_normalize_cam(cam, dimension)
         cams.append(cam)
 
     m = np.mean(cams, axis=0)
     std = np.std(cams, axis=0)
-    cov = np.nan_to_num(std / m)
+    cov = std / (m+1e-10)
     cov = cov / np.max(cov)
     
     newcam = m  * (1-cov)
-    newcam = cv2.resize(newcam, (dimension, dimension))
+    newcam = resize_normalize_cam(newcam, dimension)
     score_heatmap = newcam.copy()
-    newcam = np.maximum(0, newcam)
-    newcam /= np.max(newcam)
 
     raw_image = np.asarray(Image.fromarray(raw_array.astype("uint8")).resize((dimension, dimension)))
     newcam = cv2.applyColorMap(np.uint8(255-255*newcam), cv2.COLORMAP_JET)
