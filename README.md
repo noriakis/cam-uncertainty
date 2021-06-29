@@ -4,7 +4,6 @@ Jupyter notebooks are for reproducing the visualization involving the general im
 - models: directory storing models.
 - weights: directory storing model weights.
 	- best_weights_ECG.h5 (for 1DCNN model)
-	- best_weights_CXP.h5 (for DenseNet121 with dropout)
 - images: directory storing the numpy array of tested images (resized to 224 x 224) and the resulting figure.
 
 #### The dataset used:
