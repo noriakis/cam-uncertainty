@@ -4,6 +4,15 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
+def calculate_overlap(annot, cam):
+    inside_annot = (annot.astype("float32") * cam.astype("float32")).sum()
+    cam_sum = cam.sum()
+    if cam_sum==0:
+        ovl = 0
+    else:
+        ovl = inside_annot / cam_sum
+    return ovl
+
 def resize_normalize_cam(cam, dimension):    
     cam = cv2.resize(cam, (dimension, dimension))
     cam = np.maximum(cam, 0)
@@ -93,7 +102,7 @@ def export_dropout_vgg16(dropout):
     new_model.save("models/dropout_model.h5")
     return 0
 
-def GradCam(input_model, image, category_index, layer_name, raw_array, dimension):
+def GradCam(input_model, image, category_index, layer_name, raw_array, dimension, annot):
     gradModel = tf.keras.Model(
             inputs=[input_model.inputs],
             outputs=[input_model.get_layer(layer_name).output, input_model.output]
@@ -113,6 +122,8 @@ def GradCam(input_model, image, category_index, layer_name, raw_array, dimension
     cam = tf.reduce_sum(tf.multiply(weights, convOuts), axis=-1)
     cam = cam.numpy()
     cam = resize_normalize_cam(cam, dimension)
+    
+    ovl = calculate_overlap(annot, cam)
 
     heatmap = cam.copy()
 
@@ -120,10 +131,10 @@ def GradCam(input_model, image, category_index, layer_name, raw_array, dimension
     cam = cv2.applyColorMap(np.uint8(255-255*cam), cv2.COLORMAP_JET)
     cam = cv2.addWeighted(cam, 0.5, image, 0.5, 0)
 
-    return np.uint8(cam), heatmap
+    return np.uint8(cam), heatmap, ovl
 
 
-def ScoreCam(input_model, image, category_index, layer_name, raw_array, dimension):
+def ScoreCam(input_model, image, category_index, layer_name, raw_array, dimension, annot):
     # Implementation reference
     # https://github.com/tabayashi0117/Score-CAM
     # https://github.com/haofanwang/Score-CAM
@@ -157,13 +168,15 @@ def ScoreCam(input_model, image, category_index, layer_name, raw_array, dimensio
     cam = resize_normalize_cam(cam, dimension)
     score_heatmap = cam.copy()
 
+    ovl = calculate_overlap(annot, cam)
+
     raw_image = np.asarray(Image.fromarray(raw_array.astype("uint8")).resize((dimension, dimension)))
     cam = cv2.applyColorMap(np.uint8(255-255*cam), cv2.COLORMAP_JET)
     cam = cv2.addWeighted(cam, 0.5, raw_image, 0.5, 0)
 
-    return np.uint8(cam), score_heatmap
+    return np.uint8(cam), score_heatmap, ovl
 
-def GradCam_Dropout(input_model, image, category_index, layer_name, raw_array, dimension, sample):
+def GradCam_Dropout(input_model, image, category_index, layer_name, raw_array, dimension, sample, annot):
     gradModel = tf.keras.Model(
             inputs=[input_model.inputs],
             outputs=[input_model.get_layer(layer_name).output, input_model.output]
@@ -181,20 +194,24 @@ def GradCam_Dropout(input_model, image, category_index, layer_name, raw_array, d
         weights = tf.reduce_mean(norm_grads, axis=(0, 1))
         cam = tf.reduce_sum(tf.multiply(weights, convOuts), axis=-1)
         cam = cam.numpy()
+
         cam = resize_normalize_cam(cam, dimension)
         cams.append(cam)
 
     cams = np.asarray(cams)
     m = np.mean(cams, axis=0)
+    no_zero_ratio = len(m[m!=0]) / (dimension*dimension)
+
     std = np.std(cams, axis=0)
-    cov = std / (m+1e-10)
-    cov = cov / np.max(cov)
+    cov = std / (m + 1e-10)
+    cov = cov / np.max(cov) if cov.sum()!=0 else 0
 
     w_cam = m * (1-cov)
     w_cam = resize_normalize_cam(w_cam, dimension)
+    cov_ovl = calculate_overlap(annot, w_cam)
 
     heatmap = w_cam.copy()
-    stdcam = std / np.max(std)
+    stdcam = std / np.max(std) if std.sum()!=0 else 0
 
     image = np.asarray(Image.fromarray(raw_array.astype("uint8")).resize((dimension, dimension)))
     w_cam = cv2.applyColorMap(np.uint8(255-255*w_cam), cv2.COLORMAP_JET)
@@ -204,10 +221,10 @@ def GradCam_Dropout(input_model, image, category_index, layer_name, raw_array, d
     std_cam = cv2.applyColorMap(np.uint8(255-255*stdcam), cv2.COLORMAP_JET)
     std_cam = cv2.addWeighted(std_cam, 0.5, image, 0.5, 0)
 
-    return np.uint8(w_cam), heatmap, np.uint8(std_cam)
+    return np.uint8(w_cam), heatmap, np.uint8(std_cam), cov_ovl, no_zero_ratio
 
 
-def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, dimension, sample):
+def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, dimension, sample, annot):
     # Implementation reference
     # https://github.com/tabayashi0117/Score-CAM
     # https://github.com/haofanwang/Score-CAM
@@ -246,21 +263,25 @@ def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, 
     cams = np.asarray(cams)
 
     m = np.mean(cams, axis=0)
+    no_zero_ratio = len(m[m!=0]) / (dimension*dimension)
+
     std = np.std(cams, axis=0)
     cov = std / (m+1e-10)
-    cov = cov / np.max(cov)
+    cov = cov / np.max(cov) if cov.sum()!=0 else 0
     
     newcam = m  * (1-cov)
     newcam = resize_normalize_cam(newcam, dimension)
+
+    cov_ovl = calculate_overlap(annot, newcam)
     score_heatmap = newcam.copy()
 
     raw_image = np.asarray(Image.fromarray(raw_array.astype("uint8")).resize((dimension, dimension)))
     newcam = cv2.applyColorMap(np.uint8(255-255*newcam), cv2.COLORMAP_JET)
     newcam = cv2.addWeighted(newcam, 0.5, raw_image, 0.5, 0)
 
-    stdcam = std / np.max(std)
+    stdcam = std / np.max(std) if std.sum()!=0 else 0
     raw_image = np.asarray(Image.fromarray(raw_array.astype("uint8")).resize((dimension, dimension)))
     std_cam = cv2.applyColorMap(np.uint8(255-255*stdcam), cv2.COLORMAP_JET)
     std_cam = cv2.addWeighted(std_cam, 0.5, raw_image, 0.5, 0)
 
-    return np.uint8(newcam), score_heatmap, np.uint8(std_cam)
+    return np.uint8(newcam), score_heatmap, np.uint8(std_cam), cov_ovl, no_zero_ratio
