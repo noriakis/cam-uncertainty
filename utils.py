@@ -7,19 +7,13 @@ from tqdm import tqdm
 def calculate_overlap(annot, cam):
     inside_annot = (annot.astype("float32") * cam.astype("float32")).sum()
     cam_sum = cam.sum()
-    if cam_sum==0:
-        ovl = 0
-    else:
-        ovl = inside_annot / cam_sum
+    ovl = 0 if cam_sum==0 else inside_annot / cam_sum
     return ovl
 
 def resize_normalize_cam(cam, dimension):    
     cam = cv2.resize(cam, (dimension, dimension))
     cam = np.maximum(cam, 0)
-    if cam.sum()==0:
-        pass
-    else:
-        cam = cam / np.max(cam)
+    cam = cam if cam.sum==0 else cam / np.max(cam)
     return cam
 
 def load_bayesian_CNN_1d():
@@ -204,14 +198,14 @@ def GradCam_Dropout(input_model, image, category_index, layer_name, raw_array, d
 
     std = np.std(cams, axis=0)
     cov = std / (m + 1e-10)
-    cov = cov / np.max(cov) if cov.sum()!=0 else 0
+    cov = cov / np.max(cov) if cov.sum()!=0 else cov.copy()
 
     w_cam = m * (1-cov)
     w_cam = resize_normalize_cam(w_cam, dimension)
     cov_ovl = calculate_overlap(annot, w_cam)
 
     heatmap = w_cam.copy()
-    stdcam = std / np.max(std) if std.sum()!=0 else 0
+    stdcam = std / np.max(std) if std.sum()!=0 else std.copy()
 
     image = np.asarray(Image.fromarray(raw_array.astype("uint8")).resize((dimension, dimension)))
     w_cam = cv2.applyColorMap(np.uint8(255-255*w_cam), cv2.COLORMAP_JET)
@@ -267,7 +261,7 @@ def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, 
 
     std = np.std(cams, axis=0)
     cov = std / (m+1e-10)
-    cov = cov / np.max(cov) if cov.sum()!=0 else 0
+    cov = cov / np.max(cov) if cov.sum()!=0 else cov.copy()
     
     newcam = m  * (1-cov)
     newcam = resize_normalize_cam(newcam, dimension)
@@ -279,7 +273,7 @@ def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, 
     newcam = cv2.applyColorMap(np.uint8(255-255*newcam), cv2.COLORMAP_JET)
     newcam = cv2.addWeighted(newcam, 0.5, raw_image, 0.5, 0)
 
-    stdcam = std / np.max(std) if std.sum()!=0 else 0
+    stdcam = std / np.max(std) if std.sum()!=0 else std.copy()
     raw_image = np.asarray(Image.fromarray(raw_array.astype("uint8")).resize((dimension, dimension)))
     std_cam = cv2.applyColorMap(np.uint8(255-255*stdcam), cv2.COLORMAP_JET)
     std_cam = cv2.addWeighted(std_cam, 0.5, raw_image, 0.5, 0)
