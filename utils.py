@@ -244,7 +244,7 @@ def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, 
         cam = resize_normalize_cam(cam, dimension)
         cams.append(cam)
     cams = np.asarray(cams)
-    np.save("cams.npy", cams)
+
     m = np.mean(cams, axis=0)
     std = np.std(cams, axis=0)
     cov = std / (m+1e-10)
