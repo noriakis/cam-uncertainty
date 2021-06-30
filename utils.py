@@ -7,7 +7,10 @@ from tqdm import tqdm
 def resize_normalize_cam(cam, dimension):    
     cam = cv2.resize(cam, (dimension, dimension))
     cam = np.maximum(cam, 0)
-    cam = cam / np.max(cam)
+    if cam.sum()==0:
+        pass
+    else:
+        cam = cam / np.max(cam)
     return cam
 
 def load_bayesian_CNN_1d():
@@ -240,7 +243,8 @@ def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, 
         cam = np.dot(act_map_array[0,:,:,:], weights)
         cam = resize_normalize_cam(cam, dimension)
         cams.append(cam)
-
+    cams = np.asarray(cams)
+    np.save("cams.npy", cams)
     m = np.mean(cams, axis=0)
     std = np.std(cams, axis=0)
     cov = std / (m+1e-10)
