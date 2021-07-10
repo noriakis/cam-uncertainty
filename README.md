@@ -1,5 +1,8 @@
-### Introducing uncertainty to class activation mapping in convolutional neural networks
-Jupyter notebooks are for reproducing the visualization involving the general image classification.  
+### Improvement of class activation mapping \\by introducing uncertainty for medical application
+
+
+We implemented a simple method to reflect the uncertainty in CAM by weighting the sampled CAMs by the uncertainty
+measures assessed by performing Monte Carlo dropout. We implemented gradient-based class activation mapping (Grad-CAM) and score-based class activation mapping (Score-CAM). Jupyter notebooks are for reproducing the visualization involving the general image classification using EfficientNetB0.
 
 - models: directory storing models.
 - weights: directory storing model weights.
@@ -12,7 +15,7 @@ Jupyter notebooks are for reproducing the visualization involving the general im
 - [ImageNet](https://image-net.org/)
 
 #### 2DCNN
-Using Monte-Carlo dropout to improve the localization performance of Grad-CAM and Score-CAM.
+Using Monte Carlo dropout to improve the localization performance of Grad-CAM and Score-CAM.
 
 ##### Standard CNN with MC dropout
 ![Example CAM image (chest-xray image)](images/example_cxp.png)
