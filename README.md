@@ -1,4 +1,4 @@
-### Improvement of class activation mapping \\by introducing uncertainty for medical application
+### Improvement of class activation mapping by introducing uncertainty for medical application
 
 
 We implemented a simple method to reflect the uncertainty in CAM by weighting the sampled CAMs by the uncertainty
