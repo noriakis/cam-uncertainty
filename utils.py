@@ -4,6 +4,12 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
+## Note that the code of Score-CAM is referenced from the following github repository under MIT license.
+## - https://github.com/tabayashi0117/Score-CAM
+## - https://github.com/haofanwang/Score-CAM
+## Note that the code of Grad-CAM is referenced from the pyimagesearch under the license described in LICENSE_GradCAM.
+## Adrian Rosebrock, Grad-CAM: Visualize class activation maps with Keras, TensorFlow, and Deep Learning, PyImageSearch, https://www.pyimagesearch.com/2020/03/09/grad-cam-visualize-class-activation-maps-with-keras-tensorflow-and-deep-learning/
+
 def calculate_overlap(annot, cam):
     inside_annot = (annot.astype("float32") * cam.astype("float32")).sum()
     cam_sum = cam.sum()
@@ -133,7 +139,7 @@ def ScoreCam(input_model, image, category_index, layer_name, raw_array, dimensio
     # https://github.com/tabayashi0117/Score-CAM
     # https://github.com/haofanwang/Score-CAM
     input_shape = (dimension, dimension)
-    act_map_array = tf.keras.Model(inputs=input_model.input, outputs=input_model.get_layer(layer_name).output)(image).numpy()
+    act_map_array = tf.keras.Model(input_model.input, input_model.get_layer(layer_name).output)(image).numpy()
     act_map_resized_list = [cv2.resize(act_map_array[0,:,:,k], input_shape, interpolation=cv2.INTER_LINEAR) for k in range(act_map_array.shape[3])]
     act_map_normalized_list = []
     for act_map_resized in act_map_resized_list:
@@ -225,7 +231,7 @@ def ScoreCam_Dropout(input_model, image, category_index, layer_name, raw_array, 
     input_shape = (dimension, dimension)
     cams = []
     for i in tqdm(range(0, sample)):
-        act_map_array = tf.keras.Model(inputs=input_model.input, outputs=input_model.get_layer(layer_name).output)(image).numpy()
+        act_map_array = tf.keras.Model(input_model.input, input_model.get_layer(layer_name).output)(image).numpy()
         act_map_resized_list = [cv2.resize(act_map_array[0,:,:,k], input_shape, interpolation=cv2.INTER_LINEAR) for k in range(act_map_array.shape[3])]
         act_map_normalized_list = []
         for act_map_resized in act_map_resized_list:
