@@ -4,10 +4,10 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
-## Note that the code of Score-CAM is referenced from the following github repository under MIT license.
+## Note that the code of Score-CAM referenced the following github repository under MIT license.
 ## - https://github.com/tabayashi0117/Score-CAM
 ## - https://github.com/haofanwang/Score-CAM
-## Note that the code of Grad-CAM is referenced from the pyimagesearch under the license described in LICENSE_GradCAM.
+## Note that the code of Grad-CAM referenced the pyimagesearch under the license described in LICENSE_GradCAM.
 ## Adrian Rosebrock, Grad-CAM: Visualize class activation maps with Keras, TensorFlow, and Deep Learning, PyImageSearch, https://www.pyimagesearch.com/2020/03/09/grad-cam-visualize-class-activation-maps-with-keras-tensorflow-and-deep-learning/
 
 def calculate_overlap(annot, cam):
